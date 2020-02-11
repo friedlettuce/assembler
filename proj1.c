@@ -40,6 +40,8 @@ int main(int argc, char * argv[]){
 		return -1;
 	}
 
+	int pc = 0;
+
 	print(&symbols);	
 	printf("Exiting\n");
 	free(symbols.arr);
@@ -54,7 +56,7 @@ void parse_line(symbol_c* symbols, char *program, int line, char* delim){
 
 	do{
 		if(arg == NULL) break;
-		printf("Scanned %s\n", arg);
+		// printf("Scanned %s\n", arg);
 
 		if(strcmp(arg, ".text") == 0){
 			symbols->parse_mode = 0;
@@ -67,6 +69,7 @@ void parse_line(symbol_c* symbols, char *program, int line, char* delim){
 		} else{
 			if(symbols->parse_mode == 0){
 
+				// Breaks up register args recursively
 				if(strncmp(arg, "$", 1) == 0 && strlen(arg) > 3){
 					char *tmp;
 					tmp = (char*) malloc(strlen(arg)+1 * sizeof(char));
@@ -76,11 +79,12 @@ void parse_line(symbol_c* symbols, char *program, int line, char* delim){
 					free(tmp);
 					tmp = NULL;
 					break;
-				} else printf("%s %d\n", arg, strlen(arg));
+				} // else printf("%s %d\n", arg, strlen(arg));
 
 				int code;
 				code = convert_decimal(arg);
 
+				// Stores reg/op as code
 				if(code != -1){
 					char opcode[2];
 					opcode[0] = code;
@@ -101,7 +105,7 @@ void parse_line(symbol_c* symbols, char *program, int line, char* delim){
 
 	if(arg != NULL) free(arg);
 	arg = NULL;
-	printf("Parsed line\n");
+	// printf("Parsed line\n");
 }
 
 void add_arg(symbol_c* symbols, char *arg, int line){
