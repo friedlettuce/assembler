@@ -9,13 +9,15 @@ int main(int argc, char * argv[]){
 	printf("!\n");
 	char** symbols = NULL;
 	int symbol_count = parse(symbols);
+	int i;
 
 	if(symbol_count < 1){ 
 		printf("Invalid symbols\n");
 		return -1;
 	}
 	
-	for(int i = 0; i < symbol_count; ++i)
+	printf("Symbols: %d\n", symbol_count);
+	for(i = 0; i < symbol_count; ++i)
 		printf("%s\n", symbols[i]);
 
 	free(symbols);
@@ -27,10 +29,8 @@ int parse(char** symbols){
 	int symbol_count = 0;
 	char* str = NULL;
 
-	printf("AAA\n");
 	do{
 		scanf("%ms", &str);
-		printf("%s\n", str);
 		
 		if(symbol_count < 1){
 			symbols = (char**)malloc(sizeof(char*));
@@ -42,6 +42,9 @@ int parse(char** symbols){
 		strcpy(symbols[symbol_count], str);
 		
 		++symbol_count;
+
+		free(str);
+		str = NULL;
 	}while('\n' != getchar());
 	
 	return symbol_count;
