@@ -2,50 +2,54 @@
 #include <stdlib.h>
 #include <string.h>
 
-int parse(char** symbols);
+typedef struct{
+	char* str;
+	int line;
+} symbol_t;
 
 int main(int argc, char * argv[]){
 
-	printf("!\n");
-	char** symbols = NULL;
-	int symbol_count = parse(symbols);
-	int i;
+	// Parsing Section
+	// parsing variables
+	symbol_t** symbols = NULL;
+	int symbol_count = 0;
+	int i, line = 0;
+	char* arg = NULL;
 
-	if(symbol_count < 1){ 
+	// parsing loop
+	do{
+		scanf("%ms", &arg);
+
+		if(symbols == NULL){
+			symbols = (symbol_t**)malloc(sizeof(symbol_t*));
+		} else{
+			symbols = (symbol_t**)realloc(
+				symbols, sizeof(symbol_t*));
+		}
+
+		// sets symbol struct at pos loop
+		symbols[symbol_count] = (symbol_t*)malloc(sizeof(symbol_t));
+		symbols[symbol_count]->str = (char*)malloc(
+			strlen(arg)+1 * sizeof(char));
+		strcpy(symbols[symbol_count]->str, arg);
+		symbols[symbol_count]->line = line;
+
+		if(arg != NULL) free(arg);
+		arg = NULL;
+		++symbol_count;
+
+	}while(getchar() != '\n');
+
+	if(symbol_count < 1 || symbols == NULL){ 
 		printf("Invalid symbols\n");
 		return -1;
 	}
 	
 	printf("Symbols: %d\n", symbol_count);
 	for(i = 0; i < symbol_count; ++i)
-		printf("%s\n", symbols[i]);
+		printf("%s%d\n", symbols[i]->str, symbols[i]->line);
 
 	free(symbols);
+	symbols = NULL;
 	return 0;
-}
-
-int parse(char** symbols){
-
-	int symbol_count = 0;
-	char* str = NULL;
-
-	do{
-		scanf("%ms", &str);
-		
-		if(symbol_count < 1){
-			symbols = (char**)malloc(sizeof(char*));
-		} else{
-			symbols = (char**)realloc(symbols, (symbol_count+1) * sizeof(char*));
-		}
-
-		symbols[symbol_count] = (char*)malloc((strlen(str)+1) * sizeof(char));
-		strcpy(symbols[symbol_count], str);
-		
-		++symbol_count;
-
-		free(str);
-		str = NULL;
-	}while('\n' != getchar());
-	
-	return symbol_count;
 }
