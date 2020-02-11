@@ -11,10 +11,13 @@ typedef struct{
 typedef struct{
 	symbol_t** arr;
 	int count;
+	int parse_mode;
 } symbol_c;
 
-void parse_line(symbol_c* symbols, int line);
+void parse_line(symbol_c* symbols, char *program, int line);
+void add_arg(symbol_c* symbols, char *arg, int line);
 int convert_decimal(char* arg);
+void print(symbol_c* symbols);
 
 int main(int argc, char * argv[]){
 
@@ -23,84 +26,96 @@ int main(int argc, char * argv[]){
 	symbol_c symbols;
 	symbols.arr = NULL;
 	symbols.count = 0;
-	int i, line = 0;
+	symbols.parse_mode = -1;
 
-	parse_line(&symbols, line);
+	char program[8001];
+	int line = 0;
+
+	while(fgets(program, sizeof(program), stdin) != NULL){
+		parse_line(&symbols, program, line++);
+	}
 
 	if(symbols.count < 1 || symbols.arr == NULL){ 
 		printf("Invalid symbols\n");
 		return -1;
 	}
-	
-	printf("Symbols: %d\n", symbols.count);
-	for(i = 0; i < symbols.count; ++i){
-		if(isalpha(symbols.arr[i]->str[0]))
-			printf("%s%d\n", symbols.arr[i]->str, symbols.arr[i]->line);
-		else
-			printf("%d%d\n", symbols.arr[i]->str[0], symbols.arr[i]->line);
-	}
 
+	print(&symbols);	
+	printf("Exiting\n");
 	free(symbols.arr);
 	symbols.arr = NULL;
 	return 0;
 }
 
-void parse_line(symbol_c* symbols, int line){
+void parse_line(symbol_c* symbols, char *program, int line){
 	
-	char* arg = NULL;
-	int datatext = -1; // 0 for text, 1 for data
-	
-	// parsing loop
+	char* arg;
+	arg = strtok(program, " \n\t");
+
 	do{
-		scanf("%ms", &arg);
+		if(arg == NULL) break;
+		printf("Scanned %s\n", arg);
 
 		if(strcmp(arg, ".text") == 0){
-			datatext = 0;
+			symbols->parse_mode = 0;
+			arg = strtok(NULL, " \n\t");
 			continue;
 		} else if(strcmp(arg, ".data") == 0){
-			datatext = 1;
+			symbols->parse_mode = 1;
+			arg = strtok(NULL, " \n\t");
 			continue;
 		} else{
-			if(datatext == 0){
+			if(symbols->parse_mode == 0){
 
 				int code;
 				code = convert_decimal(arg);
 
 				if(code != -1){
-					free(arg);
-					arg = (char*) malloc(2*sizeof(char));
-					arg[0] = code;
-					arg[1] = '\0';
+					char opcode[2];
+					opcode[0] = code;
+					opcode[1] = '\0';
+					add_arg(symbols, opcode, line);
+					arg = strtok(NULL, " \n\t");
+					++symbols->count;
+					continue;
 				}
 			}
 		}
 
-		if(symbols->arr == NULL){
-			symbols->arr = (
-				symbol_t**)malloc(sizeof(symbol_t*));
-		} else{
-			symbols->arr = (symbol_t**)realloc(
-				symbols->arr, sizeof(symbol_t*));
-		}
-
-		// sets symbol struct at pos loop
-		symbols->arr[symbols->count] = (
-			symbol_t*)malloc(sizeof(symbol_t));
-		symbols->arr[symbols->count]->str = (
-			char*)malloc(strlen(arg)+1 * sizeof(char));
-		strcpy(symbols->arr[symbols->count]->str, arg);
-		symbols->arr[symbols->count]->line = line;
-
-		if(arg != NULL) free(arg);
-		arg = NULL;
+		add_arg(symbols, arg, line);
+		//sscanf(symbols->arr[symbols->count]->str,
+		//	"%ms", symbols->arr[symbols->count]->str);
+		arg = strtok(NULL, " \n\t");
 		++symbols->count;
 
-	}while(getchar() != '\n');
+	} while(arg != NULL);
+
+	if(arg != NULL) free(arg);
+	arg = NULL;
+	printf("Parsed line\n");
+}
+
+void add_arg(symbol_c* symbols, char *arg, int line){
+		
+	if(symbols->arr == NULL){
+		symbols->arr = (
+			symbol_t**)malloc(sizeof(symbol_t*));
+	} else{
+		symbols->arr = (symbol_t**)realloc(
+			symbols->arr, (symbols->count+1) * sizeof(symbol_t*));
+	}
+
+	// sets symbol struct at pos loop
+	symbols->arr[symbols->count] = (
+		symbol_t*)malloc(sizeof(symbol_t));
+	symbols->arr[symbols->count]->str = (
+		char*)malloc(strlen(arg)+1 * sizeof(char));
+	strcpy(symbols->arr[symbols->count]->str, arg);
+	symbols->arr[symbols->count]->line = line;
 }
 
 int convert_decimal(char* arg){
 
-	printf("Converting\n");
 	int code = -1;
 
 	// Sets opcode
@@ -118,7 +133,18 @@ int convert_decimal(char* arg){
 		// Sets register code
 		if(arg[1] == '0') code = 0;
 		else{ code = ((int)(arg[2])-'0') + (arg[1] == 's' ? 16 : 8); }
-		printf("Code %d\n", code);
 	}
 	return code;
+}
+
+void print(symbol_c* symbols){
+	int i;
+	
+	printf("Symbols: %d\n", symbols->count);
+	for(i = 0; i < symbols->count; ++i){
+		if(isalpha(symbols->arr[i]->str[0]))
+			printf("%s %d\n", symbols->arr[i]->str, symbols->arr[i]->line);
+		else
+			printf("%d %d\n", symbols->arr[i]->str[0], symbols->arr[i]->line);
+	}
 }
