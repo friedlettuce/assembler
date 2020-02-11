@@ -1,0 +1,2 @@
+	.text
+label:	sw	$t0,$t1

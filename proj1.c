@@ -14,7 +14,7 @@ typedef struct{
 	int parse_mode;
 } symbol_c;
 
-void parse_line(symbol_c* symbols, char *program, int line);
+void parse_line(symbol_c* symbols, char *program, int line, char *delim);
 void add_arg(symbol_c* symbols, char *arg, int line);
 int convert_decimal(char* arg);
 void print(symbol_c* symbols);
@@ -32,7 +32,7 @@ int main(int argc, char * argv[]){
 	int line = 0;
 
 	while(fgets(program, sizeof(program), stdin) != NULL){
-		parse_line(&symbols, program, line++);
+		parse_line(&symbols, program, line++, " \n\t");
 	}
 
 	if(symbols.count < 1 || symbols.arr == NULL){ 
@@ -47,10 +47,10 @@ int main(int argc, char * argv[]){
 	return 0;
 }
 
-void parse_line(symbol_c* symbols, char *program, int line){
+void parse_line(symbol_c* symbols, char *program, int line, char* delim){
 	
 	char* arg;
-	arg = strtok(program, " \n\t");
+	arg = strtok(program, delim);
 
 	do{
 		if(arg == NULL) break;
@@ -58,14 +58,25 @@ void parse_line(symbol_c* symbols, char *program, int line){
 
 		if(strcmp(arg, ".text") == 0){
 			symbols->parse_mode = 0;
-			arg = strtok(NULL, " \n\t");
+			arg = strtok(NULL, delim);
 			continue;
 		} else if(strcmp(arg, ".data") == 0){
 			symbols->parse_mode = 1;
-			arg = strtok(NULL, " \n\t");
+			arg = strtok(NULL, delim);
 			continue;
 		} else{
 			if(symbols->parse_mode == 0){
+
+				if(strncmp(arg, "$", 1) == 0 && strlen(arg) > 3){
+					char *tmp;
+					tmp = (char*) malloc(strlen(arg)+1 * sizeof(char));
+					strcpy(tmp, arg);
+					parse_line(symbols, tmp, line, ",");
+					arg = strtok(NULL, delim);
+					free(tmp);
+					tmp = NULL;
+					break;
+				} else printf("%s %d\n", arg, strlen(arg));
 
 				int code;
 				code = convert_decimal(arg);
@@ -75,7 +86,7 @@ void parse_line(symbol_c* symbols, char *program, int line){
 					opcode[0] = code;
 					opcode[1] = '\0';
 					add_arg(symbols, opcode, line);
-					arg = strtok(NULL, " \n\t");
+					arg = strtok(NULL, delim);
 					++symbols->count;
 					continue;
 				}
@@ -83,9 +94,7 @@ void parse_line(symbol_c* symbols, char *program, int line){
 		}
 
 		add_arg(symbols, arg, line);
-		//sscanf(symbols->arr[symbols->count]->str,
-		//	"%ms", symbols->arr[symbols->count]->str);
-		arg = strtok(NULL, " \n\t");
+		arg = strtok(NULL, delim);
 		++symbols->count;
 
 	} while(arg != NULL);
