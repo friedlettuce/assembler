@@ -1,2 +1,6 @@
 	.text
-label:	sw	$t0,$t1
+label:	la	$s0,next
+	j	next
+next:	bne	$t6,$s3,even
+even:	nor	$s5,$t2,$s4
+	addi	$s6,$t1,immed
