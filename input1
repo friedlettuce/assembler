@@ -1,2 +1,2 @@
-symbol1	.text	sw	$t0
-next1	next2	next3
+	.text
+	addi	$t0,$s0,$s1

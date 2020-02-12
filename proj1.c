@@ -6,6 +6,7 @@
 typedef struct{
 	char* str;
 	int line;
+	int address;
 } symbol_t;
 
 typedef struct{
@@ -15,9 +16,10 @@ typedef struct{
 } symbol_c;
 
 void parse_line(symbol_c* symbols, char *program, int line, char *delim);
-void add_arg(symbol_c* symbols, char *arg, int line);
+void add_arg(symbol_c* symbols, char *arg, int code, int line);
 int convert_decimal(char* arg);
 void print(symbol_c* symbols);
+void hex_print(int x);
 
 int main(int argc, char * argv[]){
 
@@ -40,7 +42,13 @@ int main(int argc, char * argv[]){
 		return -1;
 	}
 
-	int pc = 0;
+	int pc, i = 0;
+
+	for(i = 0; i < symbols.count; ++i, pc += 4){
+
+		hex_print(pc);
+		printf("\n");
+	}
 
 	print(&symbols);	
 	printf("Exiting\n");
@@ -86,10 +94,7 @@ void parse_line(symbol_c* symbols, char *program, int line, char* delim){
 
 				// Stores reg/op as code
 				if(code != -1){
-					char opcode[2];
-					opcode[0] = code;
-					opcode[1] = '\0';
-					add_arg(symbols, opcode, line);
+					add_arg(symbols, arg, code, line);
 					arg = strtok(NULL, delim);
 					++symbols->count;
 					continue;
@@ -97,7 +102,7 @@ void parse_line(symbol_c* symbols, char *program, int line, char* delim){
 			}
 		}
 
-		add_arg(symbols, arg, line);
+		add_arg(symbols, arg, -1, line);
 		arg = strtok(NULL, delim);
 		++symbols->count;
 
@@ -108,7 +113,7 @@ void parse_line(symbol_c* symbols, char *program, int line, char* delim){
 	// printf("Parsed line\n");
 }
 
-void add_arg(symbol_c* symbols, char *arg, int line){
+void add_arg(symbol_c* symbols, char *arg, int code, int line){
 		
 	if(symbols->arr == NULL){
 		symbols->arr = (
@@ -124,6 +129,8 @@ void add_arg(symbol_c* symbols, char *arg, int line){
 	symbols->arr[symbols->count]->str = (
 		char*)malloc(strlen(arg)+1 * sizeof(char));
 	strcpy(symbols->arr[symbols->count]->str, arg);
+	
+	symbols->arr[symbols->count]->address = code;
 	symbols->arr[symbols->count]->line = line;
 }
 
@@ -155,9 +162,23 @@ void print(symbol_c* symbols){
 	
 	printf("Symbols: %d\n", symbols->count);
 	for(i = 0; i < symbols->count; ++i){
-		if(isalpha(symbols->arr[i]->str[0]))
-			printf("%s %d\n", symbols->arr[i]->str, symbols->arr[i]->line);
-		else
-			printf("%d %d\n", symbols->arr[i]->str[0], symbols->arr[i]->line);
+		printf("%s, %d, %d\n", symbols->arr[i]->str, symbols->arr[i]->address, symbols->arr[i]->line);
 	}
+}
+
+void hex_print(int x){
+
+	char addy[7];
+	addy[6] = '\0';
+	int cur_byte, i;
+
+	for(i = 0; i < 6; ++i){
+		cur_byte = x % 16;
+		x = x>>4;
+		if(cur_byte > 9)
+			addy[5-i] = '7' + cur_byte;
+		else
+			addy[5-i] = '0' + cur_byte;
+	}
+	printf("0x%s: ", addy);
 }
