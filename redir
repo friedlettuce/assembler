@@ -1,4 +1,4 @@
 	.text
 main:	la	$s0,arr
 	.data
-arr	.space	4
+arr:	.space	4

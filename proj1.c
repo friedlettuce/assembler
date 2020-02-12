@@ -4,181 +4,166 @@
 #include <string.h>
 
 typedef struct{
-	char* str;
-	int line;
+	char* name;
 	int address;
-} symbol_t;
+} label;
 
 typedef struct{
-	symbol_t** arr;
+	label** arr;
 	int count;
-	int parse_mode;
-} symbol_c;
 
-void parse_line(symbol_c* symbols, char *program, int line, char *delim);
-void add_arg(symbol_c* symbols, char *arg, int code, int line);
-int convert_decimal(char* arg);
-void print(symbol_c* symbols);
-void hex_print(int x);
+	int parse_mode;
+} label_c;
+
+typedef struct{
+	int codes[8];
+	char type;
+} instr_set;
+
+void parse_label(label_c* labels, char *program, int line);
+void parse_instr(instr_set* instr_values, char* program, int line);
+
+void add_label(label_c* labels, char *arg, int line);
+void print(label_c* labels);
 
 int main(int argc, char * argv[]){
 
 	// Parsing Section
 	// parsing variables
-	symbol_c symbols;
-	symbols.arr = NULL;
-	symbols.count = 0;
-	symbols.parse_mode = -1;
+	label_c labels;
+	labels.arr = NULL;
+	labels.count = 0;
+	labels.parse_mode = -1;
 
-	char program[8001];
+	instr_set instr_values;
+
+	char readline[8001];
+	char** program = NULL;
+	char* tmp;
 	int line = 0;
 
-	while(fgets(program, sizeof(program), stdin) != NULL){
-		parse_line(&symbols, program, line++, " \n\t");
+	// Stores stdin
+	while(fgets(readline, sizeof(readline), stdin) != NULL){
+
+		if(program == NULL){
+			program = (char**) malloc(sizeof(char*));
+		} else{
+			program = (char**) realloc(program, line+1 * sizeof(char*));
+		}
+
+		program[line] = (char*) malloc(strlen(readline)+1 * sizeof(char));
+		strcpy(program[line], readline);
+
+		++line;
 	}
 
-	if(symbols.count < 1 || symbols.arr == NULL){ 
+	// pass 1 - get labels with pc address
+	for(line = 0; line < sizeof(program) / sizeof(char*); ++line){
+	
+		while(sscanf(program[line], "%ms", tmp)){
+			parse_label(&labels, tmp, line++);
+		}
+	}
+	print(&labels);
+
+	if(labels.count < 1 || labels.arr == NULL){ 
 		printf("Invalid symbols\n");
 		return -1;
 	}
 
-	int pc, i = 0;
+	// int op;	// R/I/J	0
+	// int rs, rt;	// R/I		1, 2
+	// int rd, shamt, func;	// R	3, 4, 5
+	// int immed;	// I		6
+	// int targaddr;	// J	7
+	int i = 0;
+	for(; i < 8; ++i)
+		instr_values.codes[i] = -1;
+	instr_values.type = 157;
 
-	for(i = 0; i < symbols.count; ++i, pc += 4){
+	// pass 2 - get instruction -> decimal -> machine code
+	//while(fgets(instr_pass, sizeof(instr_pass), stdin) != NULL){
+	//	parse_instr(&instr_values, instr_pass, line++);
+	//}
 
-		hex_print(pc);
-		printf("\n");
-	}
-
-	print(&symbols);	
+	printf("Printgin\n");
+	print(&labels);	
 	printf("Exiting\n");
-	free(symbols.arr);
-	symbols.arr = NULL;
+	free(labels.arr);
+	labels.arr = NULL;
 	return 0;
 }
 
-void parse_line(symbol_c* symbols, char *program, int line, char* delim){
-	
+void parse_label(label_c* labels, char *program, int line){
+
+	char* delim = " \n\t";	
 	char* arg;
 	arg = strtok(program, delim);
 
 	do{
 		if(arg == NULL) break;
-		// printf("Scanned %s\n", arg);
 
-		if(strcmp(arg, ".text") == 0){
-			symbols->parse_mode = 0;
-			arg = strtok(NULL, delim);
-			continue;
-		} else if(strcmp(arg, ".data") == 0){
-			symbols->parse_mode = 1;
-			arg = strtok(NULL, delim);
-			continue;
+		if(arg[strlen(arg)-1] == ':'){
+			add_label(labels, arg, line);
+			++labels->count;
+			arg = NULL;
+			return;
 		} else{
-			if(symbols->parse_mode == 0){
+			arg = strtok(NULL, delim);
+		}
+	} while(arg != NULL);
+}
 
-				// Breaks up register args recursively
-				if(strncmp(arg, "$", 1) == 0 && strlen(arg) > 3){
-					char *tmp;
-					tmp = (char*) malloc(strlen(arg)+1 * sizeof(char));
-					strcpy(tmp, arg);
-					parse_line(symbols, tmp, line, ",");
-					arg = strtok(NULL, delim);
-					free(tmp);
-					tmp = NULL;
-					break;
-				} // else printf("%s %d\n", arg, strlen(arg));
+void parse_instr(instr_set* instr_values, char* program, int line){
 
-				int code;
-				code = convert_decimal(arg);
+	char* delim = ", \n\t";
+	char* arg;
+	arg = strtok(program, delim);
 
-				// Stores reg/op as code
-				if(code != -1){
-					add_arg(symbols, arg, code, line);
-					arg = strtok(NULL, delim);
-					++symbols->count;
-					continue;
-				}
-			}
+	do{
+		if(arg == NULL) break;
+
+		// checks to see if first arg is label
+		if(arg[strlen(arg)-1] == ':'){
+			//printf("LBL %s\n", arg);
+			//arg = strtok(NULL, delim);
+			//continue;
 		}
 
-		add_arg(symbols, arg, -1, line);
+		printf("LBL %s\n", arg);
 		arg = strtok(NULL, delim);
-		++symbols->count;
 
 	} while(arg != NULL);
 
-	if(arg != NULL) free(arg);
 	arg = NULL;
-	// printf("Parsed line\n");
 }
 
-void add_arg(symbol_c* symbols, char *arg, int code, int line){
+void add_label(label_c* labels, char *arg, int line){
 		
-	if(symbols->arr == NULL){
-		symbols->arr = (
-			symbol_t**)malloc(sizeof(symbol_t*));
+	if(labels->arr == NULL){
+		labels->arr = (
+			label**)malloc(sizeof(label*));
 	} else{
-		symbols->arr = (symbol_t**)realloc(
-			symbols->arr, (symbols->count+1) * sizeof(symbol_t*));
+		labels->arr = (label**)realloc(
+			labels->arr, (labels->count+1) * sizeof(label*));
 	}
 
 	// sets symbol struct at pos loop
-	symbols->arr[symbols->count] = (
-		symbol_t*)malloc(sizeof(symbol_t));
-	symbols->arr[symbols->count]->str = (
-		char*)malloc(strlen(arg)+1 * sizeof(char));
-	strcpy(symbols->arr[symbols->count]->str, arg);
+	labels->arr[labels->count] = (
+		label*)malloc(sizeof(label));
+	labels->arr[labels->count]->name = (
+		char*)malloc(strlen(arg) * sizeof(char));
+	strncpy(labels->arr[labels->count]->name, arg, strlen(arg)-1);
+	labels->arr[labels->count]->name[strlen(arg)] = '\0';
 	
-	symbols->arr[symbols->count]->address = code;
-	symbols->arr[symbols->count]->line = line;
+	labels->arr[labels->count]->address = line*4;
 }
 
-int convert_decimal(char* arg){
-
-	int code = -1;
-
-	// Sets opcode
-	if(strcmp(arg, "add") == 0){ code = 32; }
-	else if(strcmp(arg, "addi") == 0){ code = 8; }
-	else if(strcmp(arg, "nor") == 0){ code = 39; }
-	else if(strcmp(arg, "ori") == 0){ code = 13; }
-	else if(strcmp(arg, "sll") == 0){ code = 0; }
-	else if(strcmp(arg, "lui") == 0){ code = 15; }
-	else if(strcmp(arg, "sw") == 0){ code = 43; }
-	else if(strcmp(arg, "lw") == 0){ code = 35; }
-	else if(strcmp(arg, "bne") == 0){ code = 5; }
-	else if(strcmp(arg, "j") == 0){ code = 2; }
-	else if(strncmp(arg, "$", 1) == 0){
-		// Sets register code
-		if(arg[1] == '0') code = 0;
-		else{ code = ((int)(arg[2])-'0') + (arg[1] == 's' ? 16 : 8); }
-	}
-	return code;
-}
-
-void print(symbol_c* symbols){
+void print(label_c* labels){
 	int i;
 	
-	printf("Symbols: %d\n", symbols->count);
-	for(i = 0; i < symbols->count; ++i){
-		printf("%s, %d, %d\n", symbols->arr[i]->str, symbols->arr[i]->address, symbols->arr[i]->line);
+	printf("Symbols: %d\n", labels->count);
+	for(i = 0; i < labels->count; ++i){
+		printf("%s, %d\n", labels->arr[i]->name, labels->arr[i]->address);
 	}
-}
-
-void hex_print(int x){
-
-	char addy[7];
-	addy[6] = '\0';
-	int cur_byte, i;
-
-	for(i = 0; i < 6; ++i){
-		cur_byte = x % 16;
-		x = x>>4;
-		if(cur_byte > 9)
-			addy[5-i] = '7' + cur_byte;
-		else
-			addy[5-i] = '0' + cur_byte;
-	}
-	printf("0x%s: ", addy);
 }
